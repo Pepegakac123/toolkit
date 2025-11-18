@@ -153,3 +153,37 @@ func TestTools_CreateDirIfNotExists(t *testing.T) {
 
 	_ = os.Remove("./testdata/myDir")
 }
+
+var slugTests = []struct {
+	name          string
+	s             string
+	expected      string
+	errorExpected bool
+}{
+	{name: "Correct slug", s: "i-am-slug", expected: "i-am-slug", errorExpected: false},
+	{name: "A single word", s: "Tomato", expected: "tomato", errorExpected: false},
+	{name: "Two words without slug", s: "Two words", expected: "two-words", errorExpected: false},
+	{name: "Two words with slugs at the beginning and end", s: "-Two words-", expected: "two-words", errorExpected: false},
+	{name: "Special characters", s: "$$$Two$$ words@!-", expected: "two-words", errorExpected: false},
+	{name: "Empty string", s: "", expected: "", errorExpected: true},
+	{name: "Polish char", s: "ćóć", expected: "", errorExpected: true},
+	{name: "Polish char and Roman char", s: "ćóćci", expected: "ci", errorExpected: false},
+}
+
+func TestTools_Slugify(t *testing.T) {
+	var testTool Tools
+
+	for _, test := range slugTests {
+		slug, err := testTool.Slugify(test.s)
+		if err != nil && !test.errorExpected {
+			t.Error(err)
+		}
+		if slug != test.expected && test.errorExpected {
+			t.Errorf("The test (%s) failed: expected: %v, received: %v", test.name, test.expected, slug)
+		}
+		if err == nil && test.errorExpected {
+			t.Errorf("The test (%s) passed even though it should failed: expected: %v, received: %v", test.name, test.expected, slug)
+		}
+	}
+
+}
