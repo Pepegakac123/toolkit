@@ -6,8 +6,10 @@ import (
 	"image/png"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"sync"
 	"testing"
 )
@@ -184,6 +186,40 @@ func TestTools_Slugify(t *testing.T) {
 		if err == nil && test.errorExpected {
 			t.Errorf("The test (%s) passed even though it should failed: expected: %v, received: %v", test.name, test.expected, slug)
 		}
+	}
+
+}
+
+// DownloadStaticFile it downloads a file and tries to force the browser to avoid displaying it in the browser window by setting content disposition. It also allow specification
+// of the display name
+func (t *Tools) DownloadStaticFile(w http.ResponseWriter, r *http.Request, p, file, displayName string) {
+	fp := path.Join(p, file)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", displayName))
+	http.ServeFile(w, r, fp)
+}
+
+func TestTools_DownloadStaticFiles(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequest("get", "/", nil)
+
+	var testTool Tools
+
+	testTool.DownloadStaticFile(rr, req, "./testdata", "hotend.png", "bambu.png")
+
+	res := rr.Result()
+	defer res.Body.Close()
+
+	if res.Header["Content-Length"][0] != "190914" {
+		t.Error("Wrong content length of", res.Header["Content-Length"][0])
+	}
+
+	if res.Header["Content-Disposition"][0] != "attachment; filename=\"bambu.png\"" {
+		t.Error("Wrong content disposition")
+	}
+
+	_, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Error(err)
 	}
 
 }
